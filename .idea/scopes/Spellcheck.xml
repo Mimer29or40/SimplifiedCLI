@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="Spellcheck" pattern="!file:uv.lock" />
+</component>

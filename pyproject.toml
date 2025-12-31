@@ -1,0 +1,40 @@
+[project]
+name = "simpcli"
+version = "0.1.0"
+description = "A simplified command line interface."
+requires-python = ">=3.14"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "tox>=4.32.0",
+    "pytest>=8.4.2",
+]
+
+[tool.ruff]
+# https://docs.astral.sh/ruff/settings/
+fix = true
+line-length = 100
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D203",
+    "D213",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/examples/*" = [
+    "INP001",
+]
+"test/*" = [
+    "INP001",
+    "S101",
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
