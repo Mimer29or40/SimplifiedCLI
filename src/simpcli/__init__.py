@@ -4,6 +4,7 @@ import inspect
 import logging
 import sys
 from annotationlib import Format
+from argparse import ArgumentParser
 from dataclasses import dataclass
 from dataclasses import field
 from logging.handlers import TimedRotatingFileHandler
@@ -11,6 +12,8 @@ from typing import TYPE_CHECKING
 from typing import NoReturn
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable
+    from collections.abc import Mapping
     from inspect import Signature
     from logging import FileHandler
     from logging import Formatter
@@ -83,11 +86,17 @@ class Manager:
 
     commands: dict[str, object] = field(default_factory=dict, init=False)
 
-    def parameter[T](self, func: T) -> T:
+    @property
+    def prog(self) -> str:
+        """Get the program name."""
+        prog: str = ""
+        return f"{prog}.exe" if getattr(sys, "frozen", False) else f"{prog}.py"
+
+    def parameter[T: Callable](self, func: T) -> T:
         """Add additional configuration to a command parameter."""
         return func
 
-    def command[T](self, func: T) -> T:
+    def command[T: Callable](self, func: T) -> T:
         """Designate the function as a command..
 
         :param func: The function to use as a command.
@@ -102,11 +111,17 @@ class Manager:
         :param args: The raw arguments to pass to the command.
         :return: The result of the command.
         """
-        cleaned_args: list[str] = list(map(str, args))
-
-        result: Result = 0
+        result: Result
         try:
-            pass
+            parser: ArgumentParser = self.create_parser()
+
+            cleaned_args: list[str] = list(map(str, args))
+            parsed_args: dict[str, Any] = dict(vars(parser.parse_args(cleaned_args)))
+
+            if parsed_args.pop("verbose", False):
+                logger_handler.setLevel(logging.DEBUG)
+
+            result = self.__handle_command(parsed_args)
         except SystemExit:  # pragma: no cover
             # Raised when ArgumentParser fails to parse the arguments.
             result = 10
@@ -115,6 +130,19 @@ class Manager:
             result = -1
 
         return result
+
+    def __handle_command(self, parsed_args: dict[str, Any]) -> Result:
+        command_name: str | None = parsed_args.pop("command", None)
+        if command_name is None:
+            message: str = "No command provided."
+            raise ValueError(message)
+
+        command = self.commands.get(command_name, None)
+        if command is None:
+            message: str = f"Unknown Command: {command_name}"
+            raise ValueError(message)
+
+        return command.run(**parsed_args)
 
     def handle_main(self) -> NoReturn:
         """Handle main."""
