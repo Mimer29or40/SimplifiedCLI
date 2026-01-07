@@ -2,7 +2,7 @@
 name = "simpcli"
 version = "0.1.0"
 description = "A simplified command line interface."
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = []
 
 [project.optional-dependencies]
@@ -25,11 +25,14 @@ select = ["ALL"]
 ignore = [
     "D203",
     "D213",
+    "FIX002",
+    "TD003",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "src/examples/*" = [
     "INP001",
+    "T201",
 ]
 "test/*" = [
     "INP001",
@@ -38,3 +41,4 @@ ignore = [
 
 [tool.ruff.lint.isort]
 force-single-line = true
+required-imports = ["from __future__ import annotations"]
