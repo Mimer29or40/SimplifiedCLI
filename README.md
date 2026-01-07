@@ -1,3 +1,10 @@
+# SimplifiedCLI
+
+**A simple CLI for python applications.**
+
+## Basic Example:
+
+```python
 """Basic example."""
 
 from __future__ import annotations
@@ -47,3 +54,5 @@ def optional_args(param: str, flag: bool = False) -> Result:  # noqa: FBT001, FB
 
 if __name__ == "__main__":
     manager.handle_main()
+
+```
