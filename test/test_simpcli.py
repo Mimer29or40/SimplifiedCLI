@@ -160,6 +160,18 @@ class TestManager:
         assert manager.kwargs == {}
         assert manager.commands == {}
 
+    def test_global_parameter(self, manager: Manager) -> None:
+        """Test for Manager.global_parameter()."""
+        manager.global_parameter("--flag", description="description")
+
+        assert len(manager.global_parameters) == 1
+
+        parameter: Parameter = manager.global_parameters[0]
+
+        assert isinstance(parameter, Parameter)
+        assert parameter.args == ["--flag"]
+        assert parameter.kwargs == {"description": "description"}
+
     class TestCommand:
         """Test for Manager.command()."""
 

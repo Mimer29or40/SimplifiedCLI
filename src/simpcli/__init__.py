@@ -162,6 +162,7 @@ class Manager:
     version: str | None
     kwargs: Mapping[str, Any]
 
+    global_parameters: list[Parameter]
     commands: dict[str, Command]
 
     def __init__(self, prog: str, version: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
@@ -170,7 +171,14 @@ class Manager:
         object.__setattr__(self, "version", version)
         object.__setattr__(self, "kwargs", kwargs)
 
+        object.__setattr__(self, "global_parameters", [])
         object.__setattr__(self, "commands", {})
+
+    def global_parameter(self, name_or_flag: str, *name_or_flags: str, **kwargs: Any) -> None:  # noqa: ANN401
+        """Add a global parameter to the manager."""
+        args: list[str] = [name_or_flag, *name_or_flags]
+
+        self.global_parameters.append(Parameter(args, kwargs))
 
     def command[C: CommandFunc](self, **kwargs: Any) -> Callable[[C], C]:  # noqa: ANN401
         """Designate the function as a command."""
@@ -249,7 +257,9 @@ class Manager:
         if self.version is not None:
             parser.add_argument("-v", "--version", action="version", version=self.version)
 
-        # TODO(Ryan): Add global options
+        parameter: Parameter
+        for parameter in self.global_parameters:
+            parser.add_argument(*parameter.args, **parameter.kwargs)
 
         # User Defined Commands
         command_parser: _SubParsersAction = parser.add_subparsers(
