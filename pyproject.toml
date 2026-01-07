@@ -9,13 +9,16 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
-    "tox>=4.32.0",
+    "tox>=4.33.0",
     "pytest>=8.4.2",
 ]
 
 [build-system]
-requires = ["setuptools", "setuptools_scm"]
+requires = ["setuptools>=80", "setuptools-scm[simple]>=8"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# https://setuptools-scm.readthedocs.io/en/latest/config/
 
 [tool.ruff]
 # https://docs.astral.sh/ruff/settings/
