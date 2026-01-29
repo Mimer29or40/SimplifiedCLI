@@ -15,8 +15,11 @@ from typing import Any
 import pytest
 
 import simpcli
+from simpcli import ARGPARSE_EXIT
 from simpcli import ARGUMENT_ERROR
+from simpcli import FAILURE
 from simpcli import NO_COMMAND_ERROR
+from simpcli import SUCCESS
 from simpcli import Command
 from simpcli import Manager
 from simpcli import NoDefault
@@ -162,7 +165,7 @@ class TestManager:
 
     def test_global_parameter(self, manager: Manager) -> None:
         """Test for Manager.global_parameter()."""
-        manager.global_parameter("--flag", description="description")
+        manager.global_parameter("--flag", action="store_true", help="help")
 
         assert len(manager.global_parameters) == 1
 
@@ -170,7 +173,14 @@ class TestManager:
 
         assert isinstance(parameter, Parameter)
         assert parameter.args == ["--flag"]
-        assert parameter.kwargs == {"description": "description"}
+        assert parameter.kwargs == {"action": "store_true", "help": "help"}
+
+        @manager.command()
+        def command(flag: bool) -> Result:  # noqa: FBT001
+            return SUCCESS if flag else FAILURE
+
+        assert manager.run("--flag", "command") == SUCCESS
+        assert manager.run("command") == FAILURE
 
     class TestCommand:
         """Test for Manager.command()."""
@@ -180,10 +190,10 @@ class TestManager:
 
             @manager.command()
             def command() -> Result:
-                return 0
+                return SUCCESS
 
             result: Result = command()
-            assert result == 0
+            assert result == SUCCESS
 
             command_obj: Command = manager.commands[command.__name__]
 
@@ -198,7 +208,7 @@ class TestManager:
 
             @manager.command(description="description")
             def command() -> Result:
-                return 0
+                return SUCCESS
 
             command_obj: Command = manager.commands[command.__name__]
 
@@ -234,7 +244,7 @@ class TestManager:
 
             @manager.parameter("param")
             def command(param: int) -> Result:  # noqa: ARG001
-                return 0
+                return SUCCESS
 
             assert hasattr(command, "parameters")
             assert isinstance(command.parameters, deque)
@@ -250,7 +260,7 @@ class TestManager:
 
             @manager.parameter("-f", "--flag")
             def command(flag: bool) -> Result:  # noqa: ARG001, FBT001
-                return 0
+                return SUCCESS
 
             parameter: Parameter = command.parameters[0]
 
@@ -263,7 +273,7 @@ class TestManager:
 
             @manager.parameter("param", description="description")
             def command(param: int) -> Result:  # noqa: ARG001
-                return 0
+                return SUCCESS
 
             parameter: Parameter = command.parameters[0]
 
@@ -280,18 +290,29 @@ class TestManager:
             @manager.command()
             @manager.parameter("param")
             def command(param: int) -> Result:  # noqa: ARG001
-                return 0
+                return SUCCESS
 
             result: Result = manager.run("--verbose", "command", 1)
 
-            assert result == 0
+            assert result == SUCCESS
+
+        def test_exit(self, manager: Manager) -> None:
+            """Test for Manager.run() when argparse exits."""
+
+            @manager.command()
+            def command() -> Result:
+                return SUCCESS
+
+            result: Result = manager.run("--help", "command")
+
+            assert result == ARGPARSE_EXIT
 
         def test_none(self, manager: Manager) -> None:
             """Test for Manager.run() with no command."""
 
             @manager.command()
             def command() -> Result:
-                return 0
+                return SUCCESS
 
             result: Result = manager.run()
 
@@ -302,7 +323,7 @@ class TestManager:
 
             @manager.command()
             def command() -> Result:
-                return 0
+                return SUCCESS
 
             result: Result = manager.run("unknown")
 
@@ -325,7 +346,7 @@ class TestManager:
 
         @manager.command()
         def command() -> Result:
-            return 0
+            return SUCCESS
 
         with pytest.raises(SystemExit):
             manager.handle_main()

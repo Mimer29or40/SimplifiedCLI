@@ -26,13 +26,17 @@ if TYPE_CHECKING:  # pragma: no cover
     from logging import Logger
     from pathlib import Path
     from typing import Any
+    from typing import Final
     from typing import Self
 
 
 __all__: list[str] = [
+    "ARGPARSE_EXIT",
     "ARGUMENT_ERROR",
+    "FAILURE",
     "NO_COMMAND_ERROR",
     "NO_DEFAULT",
+    "SUCCESS",
     "Command",
     "Manager",
     "NoCommandError",
@@ -48,13 +52,18 @@ __all__: list[str] = [
 
 type Result = int | str
 
+SUCCESS: Final[Result] = 0
+ARGPARSE_EXIT: Final[Result] = "ARGPARSE_EXIT"
+ARGUMENT_ERROR: Final[Result] = "ARGUMENT_ERROR"
+NO_COMMAND_ERROR: Final[Result] = "NO_COMMAND_ERROR"
+FAILURE: Final[Result] = -1
+
 
 class CommandFunc(Protocol):
     __name__: str
     parameters: Sequence[Parameter]
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Result:  # pragma: no cover  # noqa: ANN401
-        pass
+    def __call__(self, *args: Any, **kwargs: Any) -> Result: ...  # noqa: ANN401
 
 
 logger_formatter: Formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
@@ -63,8 +72,7 @@ logger_handler: Handler = logging.StreamHandler(sys.stdout)
 logger_handler.setFormatter(logger_formatter)
 logger_handler.setLevel(logging.INFO)
 
-logger: Logger = logging.getLogger(__name__)
-logger.propagate = False
+logger: Logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logger.handlers = [logger_handler]
 
@@ -77,12 +85,12 @@ class NoDefault:
     def __new__(cls) -> Self:
         """Create the singleton instance or return it."""
         if cls.__instance__ is None:
-            cls.__instance__ = super().__new__(cls)
-        return cls.__instance__
+            cls.__instance__: NoDefault = super().__new__(cls)
+        return cls.__instance__  # ty:ignore[invalid-return-type]
 
     @override
     def __repr__(self) -> str:
-        return "NoDefault"
+        return self.__class__.__name__
 
     @classmethod
     def remove_defaults(cls, **kwargs: Any) -> dict[str, Any]:  # noqa: ANN401
@@ -92,8 +100,6 @@ class NoDefault:
 
 
 NO_DEFAULT: NoDefault = NoDefault()
-ARGUMENT_ERROR: int = 10
-NO_COMMAND_ERROR: int = 11
 
 
 def get_logger(name: str) -> Logger:
@@ -226,6 +232,9 @@ class Manager:
             parsed_args: dict[str, Any] = dict(vars(parser.parse_args(cleaned_args)))
 
             result = self.__handle_command(parsed_args)
+        except SystemExit:
+            # ArgParser exited, either error or help/version
+            result = ARGPARSE_EXIT
         except ArgumentError as e:
             # Raised when ArgumentParser fails to parse the arguments.
             logger.exception("Argparse error:", exc_info=e)
@@ -236,7 +245,7 @@ class Manager:
             result = NO_COMMAND_ERROR
         except BaseException as e:
             logger.exception("Unhandled Exception:", exc_info=e)
-            result = -1
+            result = FAILURE
 
         return result
 
@@ -253,7 +262,7 @@ class Manager:
         kwargs.setdefault("exit_on_error", False)
         parser: ArgumentParser = ArgumentParser(prog=prog, **kwargs)
 
-        parser.add_argument("--verbose", action="store_true")
+        parser.add_argument("--verbose", action="store_true", help="enable debug logging")
         if self.version is not None:
             parser.add_argument("-v", "--version", action="version", version=self.version)
 

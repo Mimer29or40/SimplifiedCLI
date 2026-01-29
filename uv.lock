@@ -121,7 +121,7 @@ wheels = [
 ]
 
 [[package]]
-name = "simpcli"
+name = "simplifiedcli"
 source = { editable = "." }
 
 [package.optional-dependencies]
