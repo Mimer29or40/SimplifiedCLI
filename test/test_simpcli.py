@@ -262,7 +262,7 @@ class TestManager:
             def command(flag: bool) -> Result:  # noqa: ARG001, FBT001
                 return SUCCESS
 
-            parameter: Parameter = command.parameters[0]
+            parameter: Parameter = command.parameters[0]  # ty:ignore[unresolved-attribute]
 
             assert isinstance(parameter, Parameter)
             assert parameter.args == ["-f", "--flag"]
@@ -275,7 +275,7 @@ class TestManager:
             def command(param: int) -> Result:  # noqa: ARG001
                 return SUCCESS
 
-            parameter: Parameter = command.parameters[0]
+            parameter: Parameter = command.parameters[0]  # ty:ignore[unresolved-attribute]
 
             assert isinstance(parameter, Parameter)
             assert parameter.args == ["param"]

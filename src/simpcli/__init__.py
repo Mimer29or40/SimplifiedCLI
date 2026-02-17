@@ -186,10 +186,10 @@ class Manager:
 
         self.global_parameters.append(Parameter(args, kwargs))
 
-    def command[C: CommandFunc](self, **kwargs: Any) -> Callable[[C], C]:  # noqa: ANN401
+    def command[T](self, **kwargs: Any) -> Callable[[T], T]:  # noqa: ANN401
         """Designate the function as a command."""
 
-        def decorator(func: C) -> C:
+        def decorator[C: CommandFunc](func: C) -> C:
             # TODO(Ryan): inspect.signature(func, annotation_format=Format.FORWARD_REF)
             parameters: Sequence[Parameter] = []
             if hasattr(func, "parameters"):
@@ -202,15 +202,15 @@ class Manager:
         return decorator
 
     @staticmethod
-    def parameter[C: CommandFunc](
+    def parameter[T](
         name_or_flag: str,
         *name_or_flags: str,
         **kwargs: Any,  # noqa: ANN401
-    ) -> Callable[[C], C]:
+    ) -> Callable[[T], T]:
         """Add additional configuration to a command parameter."""
         args: list[str] = [name_or_flag, *name_or_flags]
 
-        def decorator(func: C) -> C:
+        def decorator[C: CommandFunc](func: C) -> C:
             parameters: deque[Parameter] = getattr(func, "parameters", deque())
             parameters.appendleft(Parameter(args, kwargs))
             func.parameters = parameters
@@ -239,9 +239,8 @@ class Manager:
             # Raised when ArgumentParser fails to parse the arguments.
             logger.exception("Argparse error:", exc_info=e)
             result = ARGUMENT_ERROR
-        except NoCommandError as e:
+        except NoCommandError:
             # Raised when no command is provided.
-            logger.exception("No command error:", exc_info=e)
             result = NO_COMMAND_ERROR
         except BaseException as e:
             logger.exception("Unhandled Exception:", exc_info=e)
