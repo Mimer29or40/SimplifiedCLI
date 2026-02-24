@@ -300,4 +300,9 @@ class Manager:
         if command is None:
             raise NoCommandError
 
+        logger.debug("Running command: '%s'", command_name)
+        param: str
+        value: Any
+        for param, value in parsed_args.items():
+            logger.debug("Parameter: %s=%r", param, value)
         return command.func(**parsed_args)
