@@ -9,10 +9,10 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from simpcli import Manager
-from simpcli import get_logger
 
 if TYPE_CHECKING:  # pragma: no cover
     from logging import Logger
@@ -21,8 +21,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 __version__: str = "0.0.1"
 
-logger: Logger = get_logger(__name__)
-
+logger: Logger = logging.getLogger()
 
 manager: Manager = Manager(prog=__name__, version=__version__)
 

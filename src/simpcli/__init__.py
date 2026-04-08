@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import logging
+import logging.config
 import sys
 from argparse import ArgumentError
 from argparse import ArgumentParser
 from collections import deque
 from dataclasses import dataclass
-from logging.handlers import TimedRotatingFileHandler
 from typing import TYPE_CHECKING
 from typing import NoReturn
 from typing import Protocol
@@ -20,15 +20,10 @@ if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Callable
     from collections.abc import Mapping
     from collections.abc import Sequence
-    from logging import FileHandler
-    from logging import Formatter
-    from logging import Handler
     from logging import Logger
-    from pathlib import Path
     from typing import Any
     from typing import Final
     from typing import Self
-
 
 __all__: list[str] = [
     "ARGPARSE_EXIT",
@@ -43,12 +38,9 @@ __all__: list[str] = [
     "NoDefault",
     "Parameter",
     "Result",
-    "get_logger",
-    "logger",
-    "logger_formatter",
-    "logger_handler",
-    "set_logger_file",
 ]
+
+logger: Logger = logging.getLogger(__name__)
 
 type Result = int | str
 
@@ -66,15 +58,21 @@ class CommandFunc(Protocol):
     def __call__(self, *args: Any, **kwargs: Any) -> Result: ...  # noqa: ANN401
 
 
-logger_formatter: Formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-
-logger_handler: Handler = logging.StreamHandler(sys.stdout)
-logger_handler.setFormatter(logger_formatter)
-logger_handler.setLevel(logging.INFO)
-
-logger: Logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-logger.handlers = [logger_handler]
+DEFAULT_LOG_CONFIG: Mapping[str, Any] = {
+    "version": 1,
+    "incremental": False,
+    "disable_existing_loggers": False,
+    "formatters": {"standard": {"format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"}},
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+            "level": "INFO",
+            "stream": "ext://sys.stdout",
+        },
+    },
+    "root": {"level": "DEBUG", "handlers": ["console"]},
+}
 
 
 class NoDefault:
@@ -100,40 +98,6 @@ class NoDefault:
 
 
 NO_DEFAULT: NoDefault = NoDefault()
-
-
-def get_logger(name: str) -> Logger:
-    """Get a logger whose parent is simpcli.logger.
-
-    :param name: The name of the logger, usually __name__.
-    :return: The logger.
-    """
-    if name == __name__:
-        return logger
-
-    new_logger: Logger = logging.getLogger(name)
-    new_logger.parent = logger
-    return new_logger
-
-
-def set_logger_file(file: Path | None = None, /, *, handler: FileHandler | None = None) -> None:
-    """Set the log FileHandler at the file provided or to the FileHandler provided."""
-    file_handler: FileHandler
-    if file is None:
-        if handler is None:
-            message: str = "Must supply either 'file' or 'handler'"
-            raise ValueError(message)
-        file_handler = handler
-    elif handler is None:
-        file.parent.mkdir(parents=True, exist_ok=True)
-        file_handler = TimedRotatingFileHandler(file, when="D", backupCount=7)
-        file_handler.setLevel(logging.INFO)
-        file_handler.setFormatter(logger_formatter)
-    else:
-        message: str = "'file' and 'handler' are mutually exclusive"
-        raise ValueError(message)
-
-    logger.handlers = [logger_handler, file_handler]
 
 
 class NoCommandError(Exception):
@@ -170,6 +134,7 @@ class Manager:
 
     global_parameters: list[Parameter]
     commands: dict[str, Command]
+    log_config: dict[str, Any]
 
     def __init__(self, prog: str, version: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
         """Initialize the manager."""
@@ -179,6 +144,7 @@ class Manager:
 
         object.__setattr__(self, "global_parameters", [])
         object.__setattr__(self, "commands", {})
+        object.__setattr__(self, "log_config", dict(DEFAULT_LOG_CONFIG))
 
     def global_parameter(self, name_or_flag: str, *name_or_flags: str, **kwargs: Any) -> None:  # noqa: ANN401
         """Add a global parameter to the manager."""
@@ -292,8 +258,24 @@ class Manager:
         return parser
 
     def __handle_command(self, parsed_args: dict[str, Any]) -> Result:
+        # Reset loggers
+        logging.config.dictConfig(
+            {
+                "version": 1,
+                "incremental": False,
+                "disable_existing_loggers": False,
+                "formatters": {},
+                "handlers": {},
+                "root": {},
+            },
+        )
+
+        log_config: dict[str, Any] = dict(self.log_config)
         if parsed_args.pop("verbose", False):
-            logger_handler.setLevel(logging.DEBUG)
+            handler: dict[str, Any]
+            for handler in log_config.get("handlers", {}).values():
+                handler["level"] = "DEBUG"
+        logging.config.dictConfig(log_config)
 
         command_name: str = parsed_args.pop("command")
         command: Command | None = self.commands.get(command_name, None)

@@ -2,19 +2,13 @@
 
 from __future__ import annotations
 
-import logging
 import sys
 from collections import deque
-from logging import FileHandler
-from logging import Logger
-from logging.handlers import RotatingFileHandler
-from logging.handlers import TimedRotatingFileHandler
 from typing import TYPE_CHECKING
 from typing import Any
 
 import pytest
 
-import simpcli
 from simpcli import ARGPARSE_EXIT
 from simpcli import ARGUMENT_ERROR
 from simpcli import FAILURE
@@ -25,14 +19,8 @@ from simpcli import Manager
 from simpcli import NoDefault
 from simpcli import Parameter
 from simpcli import Result
-from simpcli import get_logger
-from simpcli import set_logger_file
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import Generator
-    from logging import Handler
-    from pathlib import Path
-
     from _pytest.monkeypatch import MonkeyPatch
 
 
@@ -65,84 +53,6 @@ class TestNoDefault:
 
         assert result == {"a": 1, "c": 3, "d": 4}
         assert all(v is not NoDefault() for v in result.values())
-
-
-class TestGetLogger:
-    """Tests for simpcli.get_logger()."""
-
-    def test_standard(self) -> None:
-        """Test for simpcli.get_logger() with standard input."""
-        name: str = "test_logger"
-
-        obj: Logger = get_logger(name)
-
-        assert isinstance(obj, Logger)
-        assert obj.name == name
-        assert obj.parent is simpcli.logger
-
-    def test_parent(self) -> None:
-        """Test for simpcli.get_logger() with parent logger name input."""
-        name: str = "simpcli"
-
-        obj: Logger = get_logger(name)
-
-        assert isinstance(obj, Logger)
-        assert obj is simpcli.logger
-
-
-class TestSetLoggerFile:
-    """Tests for simpcli.set_logger_file()."""
-
-    @pytest.fixture
-    def context(self) -> Generator[None]:
-        """Fixture to set up simpcli.logger for testing."""
-        simpcli.logger.handlers = [simpcli.logger_handler]
-        yield
-        simpcli.logger.handlers = [simpcli.logger_handler]
-
-    def test_no_parameters(self) -> None:
-        """Test for simpcli.set_logger_file() with no parameters."""
-        with pytest.raises(ValueError, match=r"Must supply either 'file' or 'handler'"):
-            set_logger_file()
-
-    @pytest.mark.usefixtures("context")
-    def test_file(self, tmp_path: Path) -> None:
-        """Test for simpcli.set_logger_file() with file parameter."""
-        file: Path = tmp_path / "logs/test_file.log"
-
-        set_logger_file(file)
-
-        assert file.parent.exists()
-        assert len(simpcli.logger.handlers) == 2  # noqa: PLR2004
-
-        logger_handler: Handler = simpcli.logger.handlers[1]
-
-        assert isinstance(logger_handler, TimedRotatingFileHandler)
-        assert logger_handler.level == logging.INFO
-        assert logger_handler.formatter == simpcli.logger_formatter
-
-    @pytest.mark.usefixtures("context")
-    def test_handler(self, tmp_path: Path) -> None:
-        """Test for simpcli.set_logger_file() with handler parameter."""
-        file: Path = tmp_path / "test_file.log"
-
-        handler: FileHandler = RotatingFileHandler(file)
-
-        set_logger_file(handler=handler)
-
-        assert len(simpcli.logger.handlers) == 2  # noqa: PLR2004
-
-        logger_handler: Handler = simpcli.logger.handlers[1]
-
-        assert logger_handler is handler
-
-    def test_both_parameters(self, tmp_path: Path) -> None:
-        """Test for simpcli.set_logger_file() with both parameters."""
-        file: Path = tmp_path / "test_file.log"
-        handler: FileHandler = RotatingFileHandler(file)
-
-        with pytest.raises(ValueError, match=r"'file' and 'handler' are mutually exclusive"):
-            set_logger_file(file, handler=handler)
 
 
 class TestManager:
